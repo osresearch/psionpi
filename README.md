@@ -4,19 +4,17 @@
 The [Psion 5 MX](https://en.wikipedia.org/wiki/Psion_Series_5) was a
 PDA manufactured in 1999 that had a decent physical keyboard in a clamshell
 with a really unique sliding design that counterbalanced it.
-
 You could buy a modern [Gemina PDA](https://www.www3.planetcom.co.uk/gemini-pda)
 that has a color screen and a decent processor, or you could try to
 fit a Pi Zero W and interface FPGA into the twenty year old gadget.
 
-
 ## Screen module
-
-### Interface
 
 The LCD is 640x240 with four levels of gray.  Likely a
 [Hitachi SR16H005](datasheets/SR16H005.pdf) or similar.
 
+
+### Pinout
 
 ![FPC connector for the LCD](images/lcd-pinout.jpg)
 
@@ -58,6 +56,8 @@ The probed pinout matches the block diagram for the Hitachi module.
 Four data pins, a high speed pixel clock, a latch roughly every 640/4 clocks,
 and a frame roughly every 240 latches.
 
+### Interface
+
 ![Timing diagram](datasheets/SR16H005-timing.png)
 
 640x240 is 153600 pixels, sent four in parallel, or 38400 clocks
@@ -69,4 +69,56 @@ The display claims it can do 4 MHz clock, which would allow another
 bit per pixel at roughly the same frame rate, for eight shades of gray.
 The up5k has 1 megabit of block ram for the frame buffer, so it can
 store four bits per pixels (614 kbits).
+
+## Keyboard
+
+![Keyboard](images/keyboard.jpg)
+
+[RasmusB built a Psion keyboard interface](https://github.com/RasmusB/USB-Keyboard-Adapter)
+which documents the pinout and 12x8 scan matrix.  This has not yet been verified.
+
+### Pinout
+
+| Pin | Function |
+| -|- |
+| 1 | NC |
+| 2 | Col 9 |
+| 3 | Col 12 |
+| 4 | Col 11 |
+| 5 | Col 10 |
+| 6 | Col 8 |
+| 7 | Col 7 |
+| 8 | Col 3 |
+| 9 | Col 4 |
+| 10 | Col 5 |
+| 11 | Col 6 |
+| 12 | Col 2 |
+| 13 | Row 3 |
+| 14 | Row 4 |
+| 15 | Row 5 |
+| 16 | Col 1 |
+| 17 | Row 2 |
+| 18 | Row 6 |
+| 19 | Row 7 |
+| 20 | Row 8 |
+| 21 | Row 1 |
+| 22 | NC |
+
+### Scan matrix
+
+|    | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|   -| - | - | - | - | - | - | - | - |
+|  1 |   | 1 | 7 | Q | U | Tab | H | Z |
+|  2 | Space | 2 | 8 | W | I | A | J | X |
+|  3 | Up | 3 | 9 | E | O | S | K | C |
+|  4 | , | 4 | 0 | R | P | D | M | V |
+|  5 | Left | 5 | Back | T | L | F | . | B |
+|  6 | Right | 6 | \` | Y | Enter | G | Down | N |
+|  7 | LShift | | | | | | |
+|  8 | | | | | | | | RShift |
+|  9 | | | | | | Ctrl | | |
+| 10 | | | | | | | Fn | |
+| 11 | | | | | Menu | | | |
+| 12 | | | | Esc | | | | |
+
 
