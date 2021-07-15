@@ -1,6 +1,15 @@
 # Raspberry Pi for the Psion MX series
 ![Random collection of Psion parts](images/psion-parts.jpg)
 
+The [Psion 5 MX](https://en.wikipedia.org/wiki/Psion_Series_5) was a
+PDA manufactured in 1999 that had a decent physical keyboard in a clamshell
+with a really unique sliding design that counterbalanced it.
+
+You could buy a modern [Gemina PDA](https://www.www3.planetcom.co.uk/gemini-pda)
+that has a color screen and a decent processor, or you could try to
+fit a Pi Zero W and interface FPGA into the twenty year old gadget.
+
+
 ## Screen pinout
 
 ![FPC connector for the LCD](images/lcd-pinout.jpg)
