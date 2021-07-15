@@ -18,8 +18,8 @@ The LCD is 640x240 with four levels of gray.  Likely a
 
 ![FPC connector for the LCD](images/lcd-pinout.jpg)
 
-Probing the FPC connector finds a similar four-bit wide
-data path, along with pins for the touch screen:
+Probing the [26-pin 0.5mm FPC connector](https://www.digikey.com/en/products/detail/amphenol-icc-fci/F32R-1A7H1-11026/11564654)
+finds a similar four-bit wide data path, along with pins for the touch screen:
 
 | Pin | Function |
 | -|- |
@@ -78,6 +78,9 @@ store four bits per pixels (614 kbits).
 which documents the pinout and 12x8 scan matrix.  This has not yet been verified.
 
 ### Pinout
+
+The keyboard conncetor is a 22-pin 0.5mm FPC similar to
+[TE Connectivity AMP Connectors 2-1734839-2](https://www.digikey.com/en/products/detail/te-connectivity-amp-connectors/2-1734839-2/1860478).
 
 | Pin | Function |
 | -|- |
