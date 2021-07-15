@@ -125,3 +125,27 @@ The keyboard conncetor is a 22-pin 0.5mm FPC similar to
 | 12 | | | | Esc | | | | |
 
 
+## FPGA interface
+
+* 20 Psion keyboard
+* 8 Psion LCD
+* 3 Psion digitizer
+* 5 Psion switches
+* 1 Psion keyboard LED
+* ? charge pump PWMs (-17 V LCD bias, +70 V backlight)
+* 4 Pi SPI display
+* 2 Pi serial console
+* ? Pi to FPGA SPI programming
+
+* Battery interface?
+* Charger port?
+* External connectors?
+* CF port?
+* IR port?
+* Speaker?
+* Mic?
+
+up5k has ~30 available IO, so the keyboard takes many of them. Maybe bridge 7-8 so that they
+use only one input?  Would this cause problems with multiple modifiers?
+
+
