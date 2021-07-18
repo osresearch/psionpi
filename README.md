@@ -10,8 +10,8 @@ fit a Pi Zero W and interface FPGA into the twenty year old gadget.
 
 ## Screen module
 
-The LCD is 640x240 with four levels of gray.  Likely a
-[Hitachi SR16H005](datasheets/SR16H005.pdf) or similar.
+The LCD is 640x240 with four levels of gray, a Hitachi SP14H001-T1A,
+but no datasheet has been found for it.  The [Hitachi SR16H005](datasheets/SR16H005.pdf) has a similar pinout, and the SR14Q001 has more analog power inputs.
 
 
 ### Pinout
@@ -29,9 +29,9 @@ finds a similar four-bit wide data path, along with pins for the touch screen:
 |  4 | Digitizer 3.3v and 2.0v |
 |  5 | GND |
 |  6 | 3.3V (Digitizer power?) |
-|  7 | LCD Bias voltage? +20V |
-|  8 | LCD Bias voltage? -17V |
-|  9 | 0V? Not connected on mainboard to GND |
+|  7 | LCD Bias voltage? +20.0V |
+|  8 | LCD Bias voltage? -16.7V |
+|  9 | 2.6V? Unknown function |
 | 10 | 1.1V? Unknown function |
 | 11 | GND |
 | 12 | `Load`? 1.4 usec pulse every 59.6 usec |
