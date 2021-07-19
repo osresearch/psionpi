@@ -23,16 +23,16 @@ finds a similar four-bit wide data path, along with pins for the touch screen:
 
 | Pin | Function |
 | -|- |
-|  1 | Digitizer? But no signals |
-|  2 | Digitizer 3.3v and 2.0v |
-|  3 | Digitizer 3.3v and 2.0v |
-|  4 | Digitizer 3.3v and 2.0v |
+|  1 | Digitizer X, idle 0.0V, analog pulses |
+|  2 | Digitizer X, idle 3.3v, roughly every 20 ms |
+|  3 | Digitizer Y, idle 3.3V, two pulses at a time |
+|  4 | Digitizer Y, idle 0.0V, differential pairs? |
 |  5 | GND |
 |  6 | 3.3V (Digitizer power?) |
-|  7 | LCD Bias voltage? +20.0V |
-|  8 | LCD Bias voltage? -16.7V |
-|  9 | 2.6V? Unknown function |
-| 10 | 1.1V? Unknown function |
+|  7 | LCD Bias voltage +20.0V |
+|  8 | LCD Bias voltage -15V min contrast, -20V max contrast |
+|  9 | 2.6V Unknown function? |
+| 10 | 1.1V Unknown function? |
 | 11 | GND |
 | 12 | `Load`? 1.4 usec pulse every 59.6 usec |
 | 13 | `CP` clock at 2.8 MHz |
