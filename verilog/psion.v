@@ -37,8 +37,12 @@ module psion_display(
 	output [3:0] data_out,
 	output enable_out,
 
-	// frame buffer (to be written)
+	// frame buffer
+	output [7:0] x_out,
+	output [7:0] y_out,
+	input [7:0] pixel_in
 );
+	parameter DIVIDER = 5;
 	parameter WIDTH = 640 / 4;
 	parameter HEIGHT = 240;
 
@@ -46,9 +50,14 @@ module psion_display(
 	// the output clock pulse is twice as long 
 	reg [2:0] divider = 0;
 	wire rising_edge = divider == 3'b000;
-	wire falling_edge = divider == 3'b100;
+	wire falling_edge = divider == DIVIDER/2;
 	always @(posedge clk)
-		divider <= divider + 1;
+	begin
+		if (divider == DIVIDER)
+			divider <= 0;
+		else
+			divider <= divider + 1;
+	end;
 
 	reg clk_out = 0;
 	assign enable_out = !reset;
@@ -57,21 +66,13 @@ module psion_display(
 
 	reg [7:0] x = 0; // up to 640/4 == 160, only need 8 bits
 	reg [7:0] y = 0; // up to 240; need 8 bits
+	assign x_out = x;
+	assign y_out = y;
 
 	// assert the frame output the entire time the first
 	// row is being sent to match the data sheet
 	reg frame_out = 0;
 	reg row_out = 0;
-
-	reg [31:0] lfsr;
-	lfsr32 rand_src(clk, reset, lfsr);
-
-	reg [7:0] fb[0:2047];
-        initial $readmemh("psion.hex", fb);
-	reg [7:0] fb_byte;
-
-	always @(posedge clk)
-		fb_byte <= fb[{y[6:0], x[4:1]}];
 
 	always @(posedge clk)
 	if (reset) begin
@@ -126,7 +127,7 @@ module psion_display(
 			else
 				data_out <= 4'b0000; //y[3:0] ^ x[7:4];
 			//data_out <= 4'b1010; //y[3:0] ^ x[7:4];
-			data_out <= !x[0] ? fb_byte[7:4] : fb_byte[3:0];
+			data_out <= ~(!x[0] ? pixel_in[7:4] : pixel_in[3:0]);
 		end
 	end
 
@@ -204,23 +205,99 @@ module top(
 	wire psion_enable;
 
 	assign led_r = !psion_frame;
-	assign led_g = 1; //!psion_clk;
+	reg led_g;
+	//assign led_g = 1; //!psion_clk;
 	assign led_b = 1;
 
-	// generate a 700 Hz sync pulse for the LCD?
-	reg [14:0] counter;
-	assign gpio_37 = counter[14];
+	// fill all block rams with the frame buffer for now
+	reg [7:0] fb[0:(512*240/8 - 1)];
+        initial $readmemh("psion.hex", fb);
+
+	// generate a 3 MHz/12 MHz serial clock from the 48 MHz clock
+	// this is the 3 Mb/s maximum supported by the FTDI chip
+	reg [3:0] baud_clk;
+	always @(posedge clk_48mhz) baud_clk <= baud_clk + 1;
+
+	wire [7:0] uart_rxd;
+	wire uart_rxd_strobe;
+	reg [7:0] uart_txd;
+	reg uart_txd_strobe;
+
+	uart_rx rxd(
+		.mclk(clk),
+		.reset(reset),
+		.baud_x4(baud_clk[1]), // 48 MHz / 4 == 12 Mhz
+		.serial(serial_rxd),
+		.data(uart_rxd),
+		.data_strobe(uart_rxd_strobe)
+	);
+
+	uart_tx txd(
+		.mclk(clk),
+		.reset(reset),
+		.baud_x1(baud_clk[3]), // 48 MHz / 16 == 3 Mhz
+		.serial(serial_txd),
+		.data(uart_txd),
+		.data_strobe(uart_txd_strobe)
+	);
+
+`ifdef UART_DISPLAY
+	reg [5:0] addr_x = 0; // 0 - 63
+	reg [7:0] addr_y = 0; // 0 - 239
+
 	always @(posedge clk)
-		counter <= counter + 1;
+		if (!uart_rxd_strobe)
+		begin
+			led_g <= 1;
+			//write_enable <= 0;
+			uart_txd_strobe <= 0;
+		end else
+		begin
+			led_g <= 0;
+/*
+			write_enable <= 1;
+			write_data <= uart_rxd;
+			write_addr <= { addr_y, addr_x };
+*/
+			fb[{addr_y, addr_x}] <= uart_rxd;
+
+			// echo it
+			uart_txd <= uart_rxd;
+			uart_txd_strobe <= 1;
+
+			if (addr_x == 63)
+			begin
+				addr_x <= 0;
+				if (addr_y == 239)
+					addr_y <= 0;
+				else
+					addr_y <= addr_y + 1;
+			end else begin
+				addr_x <= addr_x + 1;
+			end
+		end
+`endif
+
+	wire [7:0] x;
+	wire [7:0] y;
+	reg [7:0] fb_byte;
+
+	always @(posedge clk)
+		fb_byte <= fb[{y[7:0], x[6:1]}];
 
 	psion_display psion_lcd(
 		.reset(1'b0),
 		.clk(clk),
+		// physical interface
 		.data_out(psion_data),
 		.clk_out(psion_clk),
 		.frame_out(psion_frame),
 		.row_out(psion_row),
-		.enable_out(psion_enable)
+		.enable_out(psion_enable),
+		// framebuffer interface
+		.x_out(x),
+		.y_out(y),
+		.pixel_in(fb_byte)
 	);
 
 endmodule
