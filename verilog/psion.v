@@ -66,6 +66,13 @@ module psion_display(
 	reg [31:0] lfsr;
 	lfsr32 rand_src(clk, reset, lfsr);
 
+	reg [7:0] fb[0:2047];
+        initial $readmemh("psion.hex", fb);
+	reg [7:0] fb_byte;
+
+	always @(posedge clk)
+		fb_byte <= fb[{y[6:0], x[4:1]}];
+
 	always @(posedge clk)
 	if (reset) begin
 		x <= 0;
@@ -119,6 +126,7 @@ module psion_display(
 			else
 				data_out <= 4'b0000; //y[3:0] ^ x[7:4];
 			//data_out <= 4'b1010; //y[3:0] ^ x[7:4];
+			data_out <= !x[0] ? fb_byte[7:4] : fb_byte[3:0];
 		end
 	end
 
@@ -190,6 +198,7 @@ module top(
 
 	wire psion_frame = gpio_23;
 	wire [3:0] psion_data = { gpio_25, gpio_26, gpio_27, gpio_32 };
+	//wire [3:0] psion_data = { gpio_32, gpio_27, gpio_26, gpio_25 };
 	wire psion_clk = gpio_35;
 	wire psion_row = gpio_31;
 	wire psion_enable;
