@@ -37,7 +37,7 @@ finds a similar four-bit wide data path, along with pins for the touch screen:
 | 12 | `Load`? 1.4 usec pulse every 59.6 usec |
 | 13 | `CP` clock at 2.8 MHz |
 | 14 | GND |
-| 15 | Data at 2.8 Mhz, bi-level (1.1V and 3.3V) |
+| 15 | Data at 2.8 Mhz |
 | 16 | Data at 2.8 Mhz |
 | 17 | Data at 2.8 Mhz |
 | 18 | Data at 2.8 Mhz |
@@ -62,12 +62,14 @@ and a frame roughly every 240 latches.
 
 640x240 is 153600 pixels, sent four in parallel, or 38400 clocks
 per frame.  With the measured 2.8 MHz clock, that is 52 frames
-per second for monochrome.  The shades of gray appear to be done with
-a bi-level signal (3.3V and 1.1V) on the input pins, although only D0
-has been observed with the change.
+per second for monochrome.  The Psion displays four shades of gray,
+although it is not clear how this is done; none of the Hitachi data
+sheets mention it anywhere and high-speed cameras don't seem to
+pickup any additional flicker from the gray pixels.
 
-Note that the diagram appears to be double-data-rate on both the
-rising and falling edge, but this is not observed in practice.
+Also note that the diagram in the datasheet appears to be double-data-rate
+on both the rising and falling edge, but this is not observed in practice.
+The data pins always transition on rising edge and are falling edge clocked.
 
 
 ## Keyboard
