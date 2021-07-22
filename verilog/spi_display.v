@@ -36,7 +36,6 @@
 
 
 module spi_display(
-	input clk,
 	output debug,
 	output [7:0] uart_data,
 	output uart_strobe,
@@ -113,7 +112,7 @@ module spi_display(
 				case(bytes)
 				0: x_start[WIDTH-1:8] <= rx_data;
 				1: x_start[7:0] <= rx_data;
-				2: x_end[WIDTH-1:0] <= rx_data;
+				2: x_end[WIDTH-1:8] <= rx_data;
 				3: begin
 					x_end[7:0] <= rx_data;
 					x_pos <= x_start;
@@ -162,4 +161,77 @@ module spi_display(
 	end
 
 endmodule
+
+`ifdef 0
+module spi_display_sync(
+	input clk,
+
+	// physical interface
+	input spi_clk,
+	input spi_cs,
+	input spi_di, // data in
+	input spi_dc, // data / !command
+
+	// outputs in clk domain
+	output reg [WIDTH-1:0] x,
+	output reg [WIDTH-1:0] y,
+	output reg strobe,
+	output reg [15:0] pixels,
+);
+	parameter WIDTH = 16;
+
+	wire [WIDTH-1:0] spi_x;
+	wire [WIDTH-1:0] spi_y;
+	wire spi_strobe;
+	wire [15:0] spi_pixels;
+
+	// turn the spi_strobe into a flipping flag in spi_clk
+	reg spi_flag;
+	always @(posedge spi_clk)
+		if (spi_strobe)
+			spi_flag = spi_flag ^ 1;
+
+	// watch for flag flips in clk domain
+	reg last_spi_flag = 0;
+	reg [WIDTH-1:0] x0;
+	reg [WIDTH-1:0] y0;
+	reg strobe0;
+	reg [15:0] pixels0;
+
+	always @(posedge clk)
+	begin
+		strobe0 <= 0;
+		strobe <= 0;
+
+		if (last_spi_flag != spi_flag)
+		begin
+			x0 <= spi_x;
+			y0 <= spi_y;
+			pixels0 <= pixels;
+			strobe0 <= 1;
+			last_spi_flag <= spi_flag;
+		end
+
+		if (strobe0) begin
+			strobe <= 1;
+			x <= x0;
+			y <= y0;
+			pixels <= pixels0;
+		end
+	end
+	
+	spi_display spi_display0(
+		spi_clk(spi_clk),
+		spi_cs(spi_cs),
+		spi_di(spi_di),
+		spi_dc(spi_dc),
+		x(spi_x),
+		y(spi_y),
+		strobe(spi_strobe),
+		pixels(spi_pixels)
+	);
+endmodule
+`endif
+
+
 `endif
