@@ -150,4 +150,12 @@ The keyboard conncetor is a 22-pin 0.5mm FPC similar to
 up5k has ~30 available IO, so the keyboard takes many of them. Maybe bridge 7-8 so that they
 use only one input?  Would this cause problems with multiple modifiers?
 
+## Pi TFT interface
 
+![Pi boot screen on the Psion display](images/pi-tft.jpg)
+
+The `rpi-display` overlay loads the `fb_ili9341.ko` module, which has
+a hard-coded 240x320 display resolution.  Hacking the binary to change
+the resolutions at offset 0xC70 to 640x480 works fine.  There is quite
+a bit of artifacting; it might be due to long jumper wires and the
+32 MHz clock rate, so this might improve with a PCB design.

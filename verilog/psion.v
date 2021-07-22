@@ -1,12 +1,16 @@
 /*
- * Psion 5MX Display and keyboard driver
+ * Psion 5MX Display driver and Raspberry PI SPI TFT device
  *
  */
+`default_nettype none
 //`include "util.v"
 `include "uart.v"
+`include "spram.v"
 `include "spi_display.v"
 
-`define UART_DISPLAY
+//`define UART_DISPLAY
+
+
 module lfsr32(
         input clk,
         input reset,
@@ -40,7 +44,7 @@ module psion_display(
 	// frame buffer
 	output [7:0] x_out,
 	output [7:0] y_out,
-	input [7:0] pixel_in
+	input [3:0] pixel_in
 );
 	parameter DIVIDER = 5;
 	parameter WIDTH = 640 / 4;
@@ -118,21 +122,10 @@ module psion_display(
 			end
 		end else begin
 			clk_out <= 1;
-
 			x <= x + 1;
-			//data_out <= lfsr[3:0]; // x[3:0] + y[3:0];
-			//if (x[1] ^ y[3])
-			if (y < 40 ? x[0] ^ y[0] : y < 100 ? x[1] ^ y[2] : y < 160 ? x[3] ^ y[4] : x[4] ^ y[5])
-				data_out <= 4'b1111; //y[3:0] ^ x[7:4];
-			else
-				data_out <= 4'b0000; //y[3:0] ^ x[7:4];
-			//data_out <= 4'b1010; //y[3:0] ^ x[7:4];
-			data_out <= ~(!x[0] ? pixel_in[7:4] : pixel_in[3:0]);
+			data_out <= ~pixel_in;
 		end
 	end
-
-	// for now send a deterministic pattern
-
 endmodule
 
 
@@ -144,48 +137,20 @@ module top(
 	output led_g,
 	output led_b,
 
-/*
 	// SPI display input from Pi
-	input gpio_34, // cs
-	input gpio_43, // dc
-	input gpio_36, // di
-	input gpio_42, // clk
-*/
+	input gpio_45,
+	input gpio_47,
+	input gpio_46,
+	input gpio_2,
 
 	// LCD display module
-	output gpio_23, // frame
-	output gpio_25, // load
-	output gpio_26, // clk
-	output gpio_27, // !enable
-	output gpio_32, // d3
-	output gpio_35, // d2
-	output gpio_31, // d1
-	output gpio_37, // d0
-	output gpio_34 // d0
-
-/*
-	// keyboard module
-	output gpio_12, // row 1
-	output gpio_21, // row 2
-	output gpio_13, // row 3
-	output gpio_19, // row 4
-	output gpio_18, // row 5
-	output gpio_11, // row 6
-	output gpio_9, // row 7
-	output gpio_6, // row 8
-	input gpio_44, // col 1
-	input gpio_4, // col 2
-	input gpio_3, // col 3
-	input gpio_48, // col 4
-	input gpio_45, // col 5
-	input gpio_47, // col 6
-	input gpio_46, // col 7-12
-
-	// remaining pins
-	input gpio_38,
-	input gpio_28,
-	input gpio_2
-*/
+	output gpio_23,
+	output gpio_25,
+	output gpio_26,
+	output gpio_27,
+	output gpio_32,
+	output gpio_35,
+	output gpio_31
 );
 	assign spi_cs = 1; // it is necessary to turn off the SPI flash chip
 	reg reset = 0;
@@ -197,21 +162,48 @@ module top(
 	always @(posedge clk_48mhz)
 		clk = !clk;
 
+	// Psion physical interface
 	wire psion_frame = gpio_23;
 	wire [3:0] psion_data = { gpio_25, gpio_26, gpio_27, gpio_32 };
 	//wire [3:0] psion_data = { gpio_32, gpio_27, gpio_26, gpio_25 };
 	wire psion_clk = gpio_35;
 	wire psion_row = gpio_31;
-	wire psion_enable;
+	wire psion_enable; // not used yet
 
-	assign led_r = !psion_frame;
-	reg led_g;
-	//assign led_g = 1; //!psion_clk;
-	assign led_b = 1;
+	// Raspberry PI SPI TFT display interface
+	wire spi_tft_cs = gpio_45;
+	wire spi_tft_dc = gpio_47;
+	wire spi_tft_di = gpio_46;
+	wire spi_tft_clk = gpio_2;
 
 	// fill all block rams with the frame buffer for now
-	reg [7:0] fb[0:(512*240/8 - 1)];
-        initial $readmemh("psion.hex", fb);
+	// dual port block ram for the frame buffer
+	// 512 * 240 / 8 == 15360 bytes
+
+`define PANEL_WIDTH 640
+`define PANEL_HEIGHT 240
+
+	// frame buffer reads by the psion output device
+	wire [15:0] read_addr;
+	wire [15:0] read_data;
+	wire read_valid;
+
+	// frame buffer writes by the spi input device
+	reg [3:0] write_enable = 4'b0000;
+	reg [15:0] write_addr = 0;
+	reg [15:0] write_data = 0;
+	reg [15:0] write_mask = 16'hFFFF;
+
+	// allocate all of the single port block ram
+	spram_1m fb0(
+		.clk(clk),
+		.wren(write_enable),
+		.write_addr(write_addr),
+		.write_data(write_data),
+		.read_addr(read_addr),
+		.read_data(read_data),
+		.read_valid(read_valid)
+	);
 
 	// generate a 3 MHz/12 MHz serial clock from the 48 MHz clock
 	// this is the 3 Mb/s maximum supported by the FTDI chip
@@ -220,8 +212,8 @@ module top(
 
 	wire [7:0] uart_rxd;
 	wire uart_rxd_strobe;
-	reg [7:0] uart_txd;
-	reg uart_txd_strobe;
+	wire [7:0] uart_txd;
+	wire uart_txd_strobe;
 
 	uart_rx rxd(
 		.mclk(clk),
@@ -248,12 +240,10 @@ module top(
 	always @(posedge clk)
 		if (!uart_rxd_strobe)
 		begin
-			led_g <= 1;
 			//write_enable <= 0;
 			uart_txd_strobe <= 0;
 		end else
 		begin
-			led_g <= 0;
 /*
 			write_enable <= 1;
 			write_data <= uart_rxd;
@@ -265,10 +255,10 @@ module top(
 			uart_txd <= uart_rxd;
 			uart_txd_strobe <= 1;
 
-			if (addr_x == 63)
+			if (addr_x == `PANEL_HEIGHT / 8 - 1)
 			begin
 				addr_x <= 0;
-				if (addr_y == 239)
+				if (addr_y == `PANEL_HEIGHT-1)
 					addr_y <= 0;
 				else
 					addr_y <= addr_y + 1;
@@ -276,17 +266,113 @@ module top(
 				addr_x <= addr_x + 1;
 			end
 		end
+`else
+	// SPI display from the Raspberry Pi
+	wire spi_tft_strobe;
+	wire [15:0] spi_tft_pixels;
+	wire [15:0] spi_tft_x;
+	wire [15:0] spi_tft_y;
+
+	spi_display spi_display0(
+		//.clk(clk),
+
+		.uart_data(uart_txd),
+		//.uart_strobe(uart_txd_strobe),
+
+		// physical interface
+		.spi_cs(spi_tft_cs),
+		.spi_dc(spi_tft_dc),
+		.spi_di(spi_tft_di),
+		.spi_clk(spi_tft_clk),
+
+		// incoming data in spi_clk domain
+		.pixels(spi_tft_pixels),
+		.strobe(spi_tft_strobe),
+		.x(spi_tft_x),
+		.y(spi_tft_y)
+	);
+
+	// convert from spi_clk to clk domain
+	reg tft_flag = 0;
+	reg [15:0] tft_x0;
+	reg [15:0] tft_y0;
+	reg [15:0] tft_pixels0;
+	reg [15:0] tft_x;
+	reg [15:0] tft_y;
+	reg [15:0] tft_pixels;
+
+	// turn the strobe into a bit flipping flag
+	always @(posedge spi_tft_clk)
+	if (spi_tft_strobe)
+	begin
+		tft_flag <= ~tft_flag;
+		tft_x0 <= spi_tft_x;
+		tft_y0 <= spi_tft_y;
+		tft_pixels0 <= spi_tft_pixels;
+	end
+
+	// watch for a bit flip flag and copy the values
+	reg last_tft_flag = 0;
+	reg tft_strobe = 0;
+	always @(posedge clk)
+	if (tft_flag == last_tft_flag)
+	begin
+		tft_strobe <= 0;
+	end else begin
+		last_tft_flag <= ~last_tft_flag;
+		tft_strobe <= 1;
+		tft_x <= tft_x0;
+		tft_y <= tft_y0;
+		tft_pixels <= tft_pixels0;
+	end
+
+
+	// there is probably a better way to average them
+	wire [5:0] tft_r = { tft_pixels[15:11], 1'b0 };
+	wire [5:0] tft_g = tft_pixels[10:5];
+	wire [5:0] tft_b = { tft_pixels[4:0], 1'b0 };
+	wire [3:0] tft_gray = (tft_r[5:2] | tft_b[5:2] | tft_r[5:2]);
+
+	reg led_g;
+	always @(posedge clk)
+	if (tft_strobe
+	&& tft_y < `PANEL_HEIGHT
+	&& tft_x < `PANEL_WIDTH
+	) begin
+		// new grayscale pixel in our clock domain!
+		// schedule a write to the nibble for this pixel
+		write_enable <= 4'b0001 << tft_x[1:0];
+		write_addr <= {tft_y[7:0], tft_x[9:2]};
+		write_data <= { 12'h000, tft_gray } << (4*tft_x[1:0]);
+		led_g <= 0;
+	end else begin
+		led_g <= 1;
+		write_enable <= 0;
+	end
+
 `endif
 
-	wire [7:0] x;
-	wire [7:0] y;
-	reg [7:0] fb_byte;
+	wire [7:0] fb_x; // 0 - 160 (640/4), but we store a 1024 pitch
+	wire [7:0] fb_y; // 0 - 239
+	reg [3:0] fb_byte;
+	assign read_addr = { fb_y[7:0], fb_x[7:0] };
 
+	// data comes out of the block ram 16 bits at a time,
+	// so grab the high bits for our four pixels
+	// but only when read_valid is set
 	always @(posedge clk)
-		fb_byte <= fb[{y[7:0], x[6:1]}];
+	begin
+		if (read_valid)
+			fb_byte <= {
+				read_data[ 3],
+				read_data[ 7],
+				read_data[11],
+				read_data[15]
+			};
+	end
 
 	psion_display psion_lcd(
-		.reset(1'b0),
+		.reset(reset),
 		.clk(clk),
 		// physical interface
 		.data_out(psion_data),
@@ -295,9 +381,15 @@ module top(
 		.row_out(psion_row),
 		.enable_out(psion_enable),
 		// framebuffer interface
-		.x_out(x),
-		.y_out(y),
+		.x_out(fb_x),
+		.y_out(fb_y),
 		.pixel_in(fb_byte)
 	);
+
+
+	// debugging output on the up5k rgb led port
+	assign led_r = !psion_frame;
+	//assign led_g = !uart_rxd_strobe;
+	assign led_b = 1; //spi_tft_cs;
 
 endmodule
