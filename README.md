@@ -72,12 +72,49 @@ on both the rising and falling edge, but this is not observed in practice.
 The data pins always transition on rising edge and are falling edge clocked.
 
 
+## FPGA interface
+
+* 20 Psion keyboard
+* 8 Psion LCD
+* 3 Psion digitizer
+* 5 Psion switches
+* 1 Psion keyboard LED
+* ? charge pump PWMs (-17 V LCD bias, +70 V backlight)
+* 4 Pi SPI display
+* 2 Pi serial console
+* ? Pi to FPGA SPI programming
+
+* Battery interface?
+* Charger port?
+* External connectors?
+* CF port?
+* IR port?
+* Speaker?
+* Mic?
+
+up5k has ~30 available IO, so the keyboard takes many of them. Maybe bridge 7-8 so that they
+use only one input?  Would this cause problems with multiple modifiers?
+
+## Pi TFT interface
+
+![Pi boot screen on the Psion display](images/pi-tft.jpg)
+
+The `rpi-display` overlay loads the `fb_ili9341.ko` module, which has
+a hard-coded 240x320 display resolution.  Hacking the binary to change
+the resolutions at offset 0xC70 to 640x480 works fine.  There is quite
+a bit of artifacting; it might be due to long jumper wires and the
+32 MHz clock rate, so this might improve with a PCB design.
+
+
 ## Keyboard
 
 ![Keyboard](images/keyboard.jpg)
 
 [RasmusB built a Psion keyboard interface](https://github.com/RasmusB/USB-Keyboard-Adapter)
 which documents the pinout and 12x8 scan matrix.  This has not yet been verified.
+The ice40up5k doesn't have enough pins to do both the LCD and the keyboard,
+so a separate MCU should be used like the atmega32u4 with USB.  It can also
+read the analog values from the touch screen sensor and emulate the mouse.
 
 ### Pinout
 
@@ -127,35 +164,3 @@ The keyboard conncetor is a 22-pin 0.5mm FPC similar to
 | 12 | | | | Esc | | | | |
 
 
-## FPGA interface
-
-* 20 Psion keyboard
-* 8 Psion LCD
-* 3 Psion digitizer
-* 5 Psion switches
-* 1 Psion keyboard LED
-* ? charge pump PWMs (-17 V LCD bias, +70 V backlight)
-* 4 Pi SPI display
-* 2 Pi serial console
-* ? Pi to FPGA SPI programming
-
-* Battery interface?
-* Charger port?
-* External connectors?
-* CF port?
-* IR port?
-* Speaker?
-* Mic?
-
-up5k has ~30 available IO, so the keyboard takes many of them. Maybe bridge 7-8 so that they
-use only one input?  Would this cause problems with multiple modifiers?
-
-## Pi TFT interface
-
-![Pi boot screen on the Psion display](images/pi-tft.jpg)
-
-The `rpi-display` overlay loads the `fb_ili9341.ko` module, which has
-a hard-coded 240x320 display resolution.  Hacking the binary to change
-the resolutions at offset 0xC70 to 640x480 works fine.  There is quite
-a bit of artifacting; it might be due to long jumper wires and the
-32 MHz clock rate, so this might improve with a PCB design.
